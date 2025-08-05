@@ -1,0 +1,898 @@
+{
+  "name": "My workflow 5",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Parse Marks Data",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [
+        -2112,
+        480
+      ],
+      "id": "a7b0b13e-1dde-4dfa-9673-32b2df811e4c"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Parse Attendance Data",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [
+        -2128,
+        672
+      ],
+      "id": "9d9272d9-51d7-4395-80d1-25cec4514356"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Parse Subjects Data",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [
+        -2096,
+        864
+      ],
+      "id": "5dca9df6-f13e-4830-8448-85954f222289"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [...$input.all()];\nconst processedItems = [];\n\nfor (const item of items) {\n  const json = item.json;\n  const midTerm = json.MidTermMarks;\n  const final = json.FinalMarks;\n  const attended = json.ClassesAttended;\n  const total = json.TotalClasses;\n  // Get assignment values\n  const assignment1 = json['Assignment-1'];\n  const assignment2 = json['Assignment-2'];\n  const totalAssignment = json['TotalAssign-Score'];\n\n  // Perform calculations\n  const attendancePercentage = total > 0 ? (attended / total) * 100 : 0;\n  const totalScore = (midTerm * 0.4) + (final * 0.6);\n  const atRiskFlag = attendancePercentage < 75 && totalScore < 45;\n\n  // --- Start: Build Slack Message (mrkdwn) ---\n  let slackMessage = `>*Student ID:* ${json.StudentID}\\n`;\n  slackMessage += `>*Subject:* ${json.SubjectName}\\n`;\n  slackMessage += `>*Total Score:* ${totalScore.toFixed(2)}\\n`;\n  slackMessage += `>*Attendance %:* ${attendancePercentage.toFixed(2)}\\n`;\n  // Add assignment scores to Slack message\n  slackMessage += `>*Assignment-1:* ${assignment1}\\n`;\n  slackMessage += `>*Assignment-2:* ${assignment2}\\n`;\n  slackMessage += `>*Total Assignment Score:* ${totalAssignment}\\n`;\n  // --- End: Build Slack Message ---\n\n  // --- Start: Build Email Message (HTML) ---\n  // This builds a full HTML table row for the email\n  let emailBody = `\n    <tr>\n      <td>${json.StudentID}</td>\n      <td>${json.SubjectName}</td>\n      <td>${totalScore.toFixed(2)}</td>\n      <td>${attendancePercentage.toFixed(2)}</td>\n      <td>${assignment1}</td>\n      <td>${assignment2}</td>\n      <td>${totalAssignment}</td>\n    </tr>`;\n  // --- End: Build Email Message ---\n  \n  // Create final processed object with all data\n  processedItems.push({\n    json: {\n      ...json, // keeps original data like parent_phone\n      attendance_percentage: parseFloat(attendancePercentage.toFixed(2)),\n      total_score: parseFloat(totalScore.toFixed(2)),\n      is_at_risk: atRiskFlag,\n      slack_message: slackMessage,\n      email_body: emailBody\n    }\n  });\n}\n\nreturn processedItems;"
+      },
+      "name": "Transform & Calculate Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -1424,
+        1008
+      ],
+      "id": "dd3fc03c-4c9c-4155-8988-a5b81a210f3f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1049723b-d0ef-4b68-b78f-4699250e8716",
+              "leftValue": "={{$json.is_at_risk}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1440,
+        624
+      ],
+      "id": "c8a076e1-03b0-473b-a758-83616f7bc6e1",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1IZ9jC00FVIi105mAerOO9C0FrQZR1yUl",
+          "mode": "list",
+          "cachedResultName": "marks",
+          "cachedResultUrl": "https://drive.google.com/file/d/1IZ9jC00FVIi105mAerOO9C0FrQZR1yUl/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2336,
+        480
+      ],
+      "id": "5d97a037-22bf-4459-b979-0f853452d0d9",
+      "name": "Download file"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1lupmHzc60zXn4NlPkXgalFPHmN9owzr6",
+          "mode": "list",
+          "cachedResultName": "attendance",
+          "cachedResultUrl": "https://drive.google.com/file/d/1lupmHzc60zXn4NlPkXgalFPHmN9owzr6/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2336,
+        672
+      ],
+      "id": "a85842d9-1262-4cd9-a7d6-be089f769255",
+      "name": "Download file1"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1Cs3e_EY3qFt3Xcr9jUOwYkYI6y0gJtYp",
+          "mode": "list",
+          "cachedResultName": "subjects",
+          "cachedResultUrl": "https://drive.google.com/file/d/1Cs3e_EY3qFt3Xcr9jUOwYkYI6y0gJtYp/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2336,
+        864
+      ],
+      "id": "4c2bd33a-d602-43e5-9af9-83bf7a1969ff",
+      "name": "Download file2"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1872,
+        544
+      ],
+      "id": "5f87ad8e-ace4-411e-a92d-93af4d66dce4",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1664,
+        688
+      ],
+      "id": "423137e0-6a90-45d5-8729-2cea0113208e",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": "1WEJR-55n042BkCvYcpOr0jOgp6x5zIDT",
+        "options": {}
+      },
+      "name": "Download Assignments",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2336,
+        1040
+      ],
+      "id": "faa73778-f215-47a6-8dc8-e65ea0e60445"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Parse Assignments Data",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 1,
+      "position": [
+        -2096,
+        1040
+      ],
+      "id": "202222bd-c796-4772-81aa-0a19f5691bd7"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "name": "Merge Assignments",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1872,
+        864
+      ],
+      "id": "43b8fea3-80a6-466c-8d09-42133fafb9e3"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Branch }}",
+                    "rightValue": "CSE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b31d2921-e359-444e-848d-b34cebe0f6c1"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8c970ec5-113f-4fa2-b3e5-e1c5d9a7d93b",
+                    "leftValue": "={{ $json.Branch }}",
+                    "rightValue": "Electrical",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6ad6338c-b986-47aa-97f7-fbf38ddded2e",
+                    "leftValue": "={{ $json.Branch }}",
+                    "rightValue": "Civil",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1024,
+        1232
+      ],
+      "id": "d7d963aa-c742-45fd-926c-0ea0444a2235",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "sendTo": "=divanshunn@gmail.com",
+        "subject": "=Confidential: At-Risk Student Report - {{ $now.toFormat('DDD') }}",
+        "message": "={{$json.final_email_body}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2e725768-580b-4ad0-9275-e8d6da2e989f",
+      "name": "CSE",
+      "webhookId": "2c2772d1-98fa-48f0-b195-83008a038587"
+    },
+    {
+      "parameters": {
+        "sendTo": "=divanshuthakur46@gmail.com",
+        "subject": "=Confidential: At-Risk Student Report - {{ $now.toFormat('DDD') }}",
+        "message": "={{$json.final_email_body}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        544
+      ],
+      "id": "9f40bfba-d28a-45fa-ac30-a182e354c15c",
+      "name": "Electrical",
+      "webhookId": "2c2772d1-98fa-48f0-b195-83008a038587"
+    },
+    {
+      "parameters": {
+        "sendTo": "=divanshunn@gmail.com",
+        "subject": "=Confidential: At-Risk Student Report - {{ $now.toFormat('DDD') }}",
+        "message": "={{$json.final_email_body}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        960
+      ],
+      "id": "dc193952-8cd8-4cc3-bbc7-41bc1b9b1c5e",
+      "name": "Cicil",
+      "webhookId": "2c2772d1-98fa-48f0-b195-83008a038587"
+    },
+    {
+      "parameters": {
+        "from": "=+14155238886",
+        "to": "=+91{{$json.parent_phone}}",
+        "toWhatsapp": true,
+        "message": "={{$json.slack_message}}",
+        "options": {}
+      },
+      "name": "Send WhatsApp Message to Parents",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        -1088,
+        368
+      ],
+      "id": "62512bf4-4676-4ad7-9b13-783c4b69a67b",
+      "retryOnFail": false,
+      "waitBetweenTries": 3000,
+      "maxTries": 4
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1aiGBDXXGN0s5Paw2R3mgGBfAlk_5H7f2tynRYWGMqFg/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1aiGBDXXGN0s5Paw2R3mgGBfAlk_5H7f2tynRYWGMqFg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "student_id": "={{$json.student_id}}",
+            "branch": "={{$json.branch}}",
+            "semester": "={{$json.semester}}",
+            "subject_name": "={{$json.subject_name}}",
+            "total_score": "={{$json.total_score}}",
+            "is_at_risk": "={{$json.is_at_risk}}",
+            "attendance_percentage": "={{$json.attendance_percentage}}",
+            "Assignment-1": "={{$json['Assignment-1']}}",
+            "Assignment-2": "={{$json['Assignment-2']}}",
+            "TotalAssign-Score": "={{$json['TotalAssign-Score']}}"
+          },
+          "matchingColumns": [
+            "student_id"
+          ],
+          "schema": [
+            {
+              "id": "student_id",
+              "displayName": "student_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "branch",
+              "displayName": "branch",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "semester",
+              "displayName": "semester",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject_code",
+              "displayName": "subject_code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "subject_name",
+              "displayName": "subject_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "attendance_percentage",
+              "displayName": "attendance_percentage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "total_score",
+              "displayName": "total_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_at_risk",
+              "displayName": "is_at_risk",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "TotalClasses",
+              "displayName": "TotalClasses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -1168,
+        1328
+      ],
+      "id": "8ddc6015-69c6-4ee2-8ff8-47bd14dd7100",
+      "name": "Append or update row in sheet"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2784,
+        784
+      ],
+      "id": "be8378bc-4cc5-486f-82bf-c0a4e9a6ecfa",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C098FLF75MW",
+          "mode": "id"
+        },
+        "text": "={{$json.slack_message}}",
+        "otherOptions": {}
+      },
+      "name": "Electrical1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        0,
+        384
+      ],
+      "id": "a6ebebb6-87dc-4b64-bf92-2202cd72a5a7",
+      "webhookId": "d525e7c7-675e-4e4b-9c6a-639948a7f4f4"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0987JZ6T09",
+          "mode": "id"
+        },
+        "text": "={{$json.slack_message}}",
+        "otherOptions": {}
+      },
+      "name": "CSE1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        0,
+        144
+      ],
+      "id": "1eeeaac4-700c-4a20-8423-48d6a404aaeb",
+      "webhookId": "d525e7c7-675e-4e4b-9c6a-639948a7f4f4"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C097TK59RD0",
+          "mode": "id"
+        },
+        "text": "={{$json.slack_message}}",
+        "otherOptions": {}
+      },
+      "name": "Civil",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        0,
+        784
+      ],
+      "id": "351c5108-ecc7-4f05-8edd-bae40582f69a",
+      "webhookId": "d525e7c7-675e-4e4b-9c6a-639948a7f4f4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Check if there are any items to process\nif (items.length === 0) {\n  return [];\n}\n\nconst branch = items[0].json.branch;\n\n// Start building the final HTML email\nlet finalEmailBody = `<h3>Confidential: At-Risk Student Report for ${branch}</h3>`;\nfinalEmailBody += `<p>The following students are identified for academic support:</p>`;\nfinalEmailBody += `<table border=\"1\" cellpadding=\"5\" cellspacing=\"0\" style=\"border-collapse: collapse; width: 100%;\">`;\n    \n// Add the table header\nfinalEmailBody += `\n  <tr style=\"background-color: #f2f2f2;\">\n    <th>Student ID</th>\n    <th>Subject</th>\n    <th>Total Score</th>\n    <th>Attendance %</th>\n    <th>Assignment-1</th>\n    <th>Assignment-2</th>\n    <th>Total Assignment Score</th>\n  </tr>`;\n\n// Loop through all students and append their table row\nfor (const item of items) {\n  // item.json.email_body contains the <tr>...</tr> for each student\n  finalEmailBody += item.json.email_body;\n}\n\n// Close the table\nfinalEmailBody += `</table>`;\n\n// Return a single item with the complete HTML body\nreturn [{\n  json: {\n    final_email_body: finalEmailBody\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        48
+      ],
+      "id": "c956d1f7-3cf0-499f-a6c1-1e64b2681526",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Check if there are any items to process\nif (items.length === 0) {\n  return [];\n}\n\nconst branch = items[0].json.branch;\n\n// Start building the final HTML email\nlet finalEmailBody = `<h3>Confidential: At-Risk Student Report for ${branch}</h3>`;\nfinalEmailBody += `<p>The following students are identified for academic support:</p>`;\nfinalEmailBody += `<table border=\"1\" cellpadding=\"5\" cellspacing=\"0\" style=\"border-collapse: collapse; width: 100%;\">`;\n    \n// Add the table header\nfinalEmailBody += `\n  <tr style=\"background-color: #f2f2f2;\">\n    <th>Student ID</th>\n    <th>Subject</th>\n    <th>Total Score</th>\n    <th>Attendance %</th>\n    <th>Assignment-1</th>\n    <th>Assignment-2</th>\n    <th>Total Assignment Score</th>\n  </tr>`;\n\n// Loop through all students and append their table row\nfor (const item of items) {\n  // item.json.email_body contains the <tr>...</tr> for each student\n  finalEmailBody += item.json.email_body;\n}\n\n// Close the table\nfinalEmailBody += `</table>`;\n\n// Return a single item with the complete HTML body\nreturn [{\n  json: {\n    final_email_body: finalEmailBody\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        656
+      ],
+      "id": "0338b291-dc10-4b7a-b5bb-c3699676f38d",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Check if there are any items to process\nif (items.length === 0) {\n  return [];\n}\n\nconst branch = items[0].json.branch;\n\n// Start building the final HTML email\nlet finalEmailBody = `<h3>Confidential: At-Risk Student Report for ${branch}</h3>`;\nfinalEmailBody += `<p>The following students are identified for academic support:</p>`;\nfinalEmailBody += `<table border=\"1\" cellpadding=\"5\" cellspacing=\"0\" style=\"border-collapse: collapse; width: 100%;\">`;\n    \n// Add the table header\nfinalEmailBody += `\n  <tr style=\"background-color: #f2f2f2;\">\n    <th>Student ID</th>\n    <th>Subject</th>\n    <th>Total Score</th>\n    <th>Attendance %</th>\n    <th>Assignment-1</th>\n    <th>Assignment-2</th>\n    <th>Total Assignment Score</th>\n  </tr>`;\n\n// Loop through all students and append their table row\nfor (const item of items) {\n  // item.json.email_body contains the <tr>...</tr> for each student\n  finalEmailBody += item.json.email_body;\n}\n\n// Close the table\nfinalEmailBody += `</table>`;\n\n// Return a single item with the complete HTML body\nreturn [{\n  json: {\n    final_email_body: finalEmailBody\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        1472
+      ],
+      "id": "e92d6075-801d-48ed-91ac-0472bb7b982d",
+      "name": "Code2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Parse Marks Data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Attendance Data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parse Subjects Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Assignments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform & Calculate Data": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send WhatsApp Message to Parents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Parse Marks Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file1": {
+      "main": [
+        [
+          {
+            "node": "Parse Attendance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file2": {
+      "main": [
+        [
+          {
+            "node": "Parse Subjects Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Assignments": {
+      "main": [
+        [
+          {
+            "node": "Parse Assignments Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Assignments Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Assignments",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Assignments": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Transform & Calculate Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "CSE1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Electrical1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Civil",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download file1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download file2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download Assignments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "CSE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Electrical",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Cicil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "47581cf0-3fc3-4591-92ce-7c63033c3712",
+  "meta": {
+    "instanceId": "b72e18daff663d96beb4b21242fafc81ab5e340e9153459e685c032a9ff02a28"
+  },
+  "id": "U6Il8Hp5CD6Wl0CS",
+  "tags": []
+}
